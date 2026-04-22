@@ -28,9 +28,27 @@ def test_missing_source_is_an_error(repo, home):
     assert not (home / ".bashrc").exists()
 
 
-def test_does_not_touch_existing_file(repo, home):
+def test_backs_up_existing_file(repo, home):
     write(repo / "bashrc", "new")
     write(home / ".bashrc", "old")
     [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home)
+    assert r.action == "backed-up"
+    assert (home / ".bashrc").read_text() == "new"
+    assert (home / ".dotkeep-backup" / ".bashrc").read_text() == "old"
+
+
+def test_no_backup_leaves_existing_file(repo, home):
+    write(repo / "bashrc", "new")
+    write(home / ".bashrc", "old")
+    [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home, backup=False)
     assert r.action == "skipped"
     assert (home / ".bashrc").read_text() == "old"
+
+
+def test_leaves_foreign_symlink_alone(repo, home, tmp_path):
+    write(repo / "bashrc", "new")
+    other = write(tmp_path / "other", "other")
+    (home / ".bashrc").symlink_to(other)
+    [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home)
+    assert r.action == "skipped"
+    assert (home / ".bashrc").resolve() == other.resolve()

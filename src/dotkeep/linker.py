@@ -19,11 +19,12 @@ class Result:
     detail: str = ""
 
 
-def link_all(manifest: Manifest, home: Path, backup: bool = True) -> list[Result]:
-    return [link_one(manifest.repo, home, entry, backup) for entry in manifest.entries]
+def link_all(manifest: Manifest, home: Path, backup: bool = True, dry_run: bool = False) -> list[Result]:
+    return [link_one(manifest.repo, home, entry, backup, dry_run) for entry in manifest.entries]
 
 
-def link_one(repo: Path, home: Path, entry: Entry, backup: bool = True) -> Result:
+def link_one(repo: Path, home: Path, entry: Entry, backup: bool = True, dry_run: bool = False) -> Result:
+    """Link one entry. With dry_run, report what would happen without changing anything."""
     source = (repo / entry.source).absolute()
     target = home / entry.target
     if not source.exists():
@@ -38,8 +39,10 @@ def link_one(repo: Path, home: Path, entry: Entry, backup: bool = True) -> Resul
         if not backup:
             return Result(entry, "skipped", "something is already there")
         saved = home / BACKUP_DIR / entry.target
-        saved.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(target, saved)
         action, detail = "backed-up", f"old file moved to {saved}"
-    os.symlink(source, target, target_is_directory=source.is_dir())
+        if not dry_run:
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(target, saved)
+    if not dry_run:
+        os.symlink(source, target, target_is_directory=source.is_dir())
     return Result(entry, action, detail)

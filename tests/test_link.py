@@ -52,3 +52,14 @@ def test_leaves_foreign_symlink_alone(repo, home, tmp_path):
     [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home)
     assert r.action == "skipped"
     assert (home / ".bashrc").resolve() == other.resolve()
+
+
+def test_dry_run_changes_nothing(repo, home):
+    write(repo / "bashrc", "new")
+    write(repo / "vimrc", "set nu")
+    write(home / ".bashrc", "old")
+    results = link_all(manifest(repo, **{".bashrc": "bashrc", ".vimrc": "vimrc"}), home, dry_run=True)
+    assert [r.action for r in results] == ["backed-up", "linked"]
+    assert (home / ".bashrc").read_text() == "old"
+    assert not (home / ".vimrc").exists()
+    assert not (home / ".dotkeep-backup").exists()

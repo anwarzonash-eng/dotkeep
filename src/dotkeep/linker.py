@@ -1,4 +1,4 @@
-"""Creating the links in the home directory."""
+"""Creating and checking the links in the home directory."""
 
 from __future__ import annotations
 
@@ -46,3 +46,26 @@ def link_one(repo: Path, home: Path, entry: Entry, backup: bool = True, dry_run:
     if not dry_run:
         os.symlink(source, target, target_is_directory=source.is_dir())
     return Result(entry, action, detail)
+
+
+def status_all(manifest: Manifest, home: Path) -> list[Result]:
+    return [status_one(manifest.repo, home, entry) for entry in manifest.entries]
+
+
+def status_one(repo: Path, home: Path, entry: Entry) -> Result:
+    """Check one entry without changing anything.
+
+    Actions: "ok", "missing" (nothing at the target), "conflict" (a real file
+    is in the way), "wrong-link" (a link to somewhere else) or "no-source".
+    """
+    source = (repo / entry.source).absolute()
+    target = home / entry.target
+    if not source.exists():
+        return Result(entry, "no-source", f"{entry.source} is missing from the repo")
+    if target.is_symlink():
+        if target.resolve() == source.resolve():
+            return Result(entry, "ok")
+        return Result(entry, "wrong-link", f"points to {os.readlink(target)}")
+    if target.exists():
+        return Result(entry, "conflict", "a file is in the way")
+    return Result(entry, "missing")

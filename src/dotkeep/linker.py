@@ -69,3 +69,17 @@ def status_one(repo: Path, home: Path, entry: Entry) -> Result:
     if target.exists():
         return Result(entry, "conflict", "a file is in the way")
     return Result(entry, "missing")
+
+
+def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False) -> list[Result]:
+    """Remove links that point into the repo. Anything else is left alone."""
+    results = []
+    for entry in manifest.entries:
+        r = status_one(manifest.repo, home, entry)
+        if r.action == "ok":
+            if not dry_run:
+                (home / entry.target).unlink()
+            results.append(Result(entry, "unlinked"))
+        else:
+            results.append(Result(entry, "skipped", "not linked by dotkeep"))
+    return results

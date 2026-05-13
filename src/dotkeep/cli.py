@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .linker import Result, link_all, status_all
+from .linker import Result, link_all, status_all, unlink_all
 from .manifest import ManifestError, load
 
 
@@ -21,6 +21,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_link = sub.add_parser("link", help="link every file in the manifest into place")
     p_link.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
     p_link.add_argument("--no-backup", action="store_true", help="skip files that already exist instead of moving them aside")
+
+    p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
+    p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
 
     sub.add_parser("status", help="show the state of every link")
     return parser
@@ -42,6 +45,11 @@ def main(argv: list[str] | None = None) -> int:
                 action = "would " + ("link" if action == "linked" else "back up")
             show(action, r)
         return 1 if any(r.action == "error" for r in results) else 0
+
+    if args.command == "unlink":
+        for r in unlink_all(manifest, args.home, dry_run=args.dry_run):
+            show("would unlink" if args.dry_run and r.action == "unlinked" else r.action, r)
+        return 0
 
     if args.command == "status":
         results = status_all(manifest, args.home)

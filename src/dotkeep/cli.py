@@ -11,11 +11,16 @@ from .linker import Result, link_all, status_all, unlink_all
 from .manifest import ManifestError, load
 
 
+def user_path(text: str) -> Path:
+    # "~" is not expanded by every shell (or when quoted), so do it here
+    return Path(text).expanduser()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dotkeep", description="Keep dotfiles in one folder and link them into place.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--repo", type=Path, default=Path.home() / "dotfiles", help="dotfiles folder (default: ~/dotfiles)")
-    parser.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
+    parser.add_argument("--repo", type=user_path, default=Path.home() / "dotfiles", help="dotfiles folder (default: ~/dotfiles)")
+    parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_link = sub.add_parser("link", help="link every file in the manifest into place")

@@ -26,3 +26,12 @@ def test_dry_run_output(repo, home, capsys):
 def test_missing_manifest(repo, home, capsys):
     assert main(["--repo", str(repo), "--home", str(home), "status"]) == 1
     assert "no dotkeep.toml" in capsys.readouterr().err
+
+
+def test_repo_path_expands_tilde(monkeypatch, tmp_path):
+    from dotkeep.cli import build_parser
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    args = build_parser().parse_args(["--repo", "~/dots", "status"])
+    assert args.repo == tmp_path / "dots"

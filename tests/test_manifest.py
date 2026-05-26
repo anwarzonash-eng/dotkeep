@@ -30,3 +30,34 @@ def test_source_must_be_a_string(repo):
     write(repo / "dotkeep.toml", '[links]\n".bashrc" = 3\n')
     with pytest.raises(ManifestError, match="must be a string"):
         load(repo)
+
+
+MULTI = """
+[links]
+".bashrc" = "bash/bashrc"
+".config/Code/User/settings.json" = "vscode/settings.json"
+
+[links.windows]
+"AppData/Roaming/Code/User/settings.json" = "vscode/settings.json"
+".bashrc" = "bash/bashrc-gitbash"
+
+[links.macos]
+"Library/Application Support/Code/User/settings.json" = "vscode/settings.json"
+"""
+
+
+def test_platform_sections(repo):
+    write(repo / "dotkeep.toml", MULTI)
+    linux = {e.target: e.source for e in load(repo, "linux").entries}
+    assert linux == {".bashrc": "bash/bashrc", ".config/Code/User/settings.json": "vscode/settings.json"}
+
+    windows = {e.target: e.source for e in load(repo, "windows").entries}
+    assert windows[".bashrc"] == "bash/bashrc-gitbash"
+    assert "AppData/Roaming/Code/User/settings.json" in windows
+    assert "Library/Application Support/Code/User/settings.json" not in windows
+
+
+def test_unknown_platform_section(repo):
+    write(repo / "dotkeep.toml", '[links.beos]\n".x" = "x"\n')
+    with pytest.raises(ManifestError, match="unknown platform"):
+        load(repo)

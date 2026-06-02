@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .linker import Result, link_all, status_all, unlink_all
+from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
 from .manifest import ManifestError, load
 
 
@@ -27,6 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_link.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
     p_link.add_argument("--no-backup", action="store_true", help="skip files that already exist instead of moving them aside")
 
+    p_add = sub.add_parser("add", help="move a file into the repo and link it back")
+    p_add.add_argument("paths", nargs="+", type=user_path, metavar="PATH")
+
     p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
 
@@ -36,6 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "add":
+        return cmd_add(args)
     try:
         manifest = load(args.repo)
     except ManifestError as e:
@@ -62,6 +67,22 @@ def main(argv: list[str] | None = None) -> int:
             show(r.action, r)
         return 0 if all(r.action == "ok" for r in results) else 1
     return 0
+
+
+def cmd_add(args: argparse.Namespace) -> int:
+    failed = False
+    added = []
+    for path in args.paths:
+        try:
+            added.append(add_file(args.repo, args.home, path))
+        except AddError as e:
+            print(f"dotkeep: {e}", file=sys.stderr)
+            failed = True
+    if added:
+        print("Moved into the repo and linked. Add these lines to [links] in dotkeep.toml:")
+        for entry in added:
+            print(f'  "{entry.target}" = "{entry.source}"')
+    return 1 if failed else 0
 
 
 def show(label: str, r: Result) -> None:

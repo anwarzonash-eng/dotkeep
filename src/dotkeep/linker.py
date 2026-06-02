@@ -83,3 +83,35 @@ def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False) -> list[Re
         else:
             results.append(Result(entry, "skipped", "not linked by dotkeep"))
     return results
+
+
+class AddError(Exception):
+    pass
+
+
+def default_source(target: str) -> str:
+    """Where a file goes in the repo: ".config/nvim/init.lua" -> "config/nvim/init.lua"."""
+    parts = Path(target).parts
+    return "/".join([parts[0].lstrip(".") or parts[0], *parts[1:]])
+
+
+def add_file(repo: Path, home: Path, path: Path) -> Entry:
+    """Move a file from home into the repo and link it back."""
+    path = path.absolute()
+    try:
+        target = path.relative_to(home.absolute()).as_posix()
+    except ValueError:
+        raise AddError(f"{path} is not inside {home}") from None
+    if path.is_symlink():
+        raise AddError(f"{path} is already a link")
+    if not path.exists():
+        raise AddError(f"{path} does not exist")
+
+    entry = Entry(target, default_source(target))
+    dest = repo / entry.source
+    if dest.exists():
+        raise AddError(f"{entry.source} already exists in the repo")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(path, dest)
+    os.symlink(dest.absolute(), path, target_is_directory=dest.is_dir())
+    return entry

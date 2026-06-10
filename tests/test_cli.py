@@ -35,3 +35,11 @@ def test_repo_path_expands_tilde(monkeypatch, tmp_path):
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     args = build_parser().parse_args(["--repo", "~/dots", "status"])
     assert args.repo == tmp_path / "dots"
+
+
+def test_add_updates_manifest_then_status_is_ok(repo, home):
+    write(repo / "dotkeep.toml", "[links]\n")
+    write(home / ".vimrc", "set nu")
+    assert main(["--repo", str(repo), "--home", str(home), "add", str(home / ".vimrc")]) == 0
+    assert '".vimrc" = "vimrc"' in (repo / "dotkeep.toml").read_text()
+    assert main(["--repo", str(repo), "--home", str(home), "status"]) == 0

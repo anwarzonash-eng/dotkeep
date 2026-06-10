@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import write
-from dotkeep.manifest import Entry, ManifestError, load
+from dotkeep.manifest import Entry, ManifestError, add_entries, load
 
 
 def test_loads_links(repo):
@@ -61,3 +61,16 @@ def test_unknown_platform_section(repo):
     write(repo / "dotkeep.toml", '[links.beos]\n".x" = "x"\n')
     with pytest.raises(ManifestError, match="unknown platform"):
         load(repo)
+
+
+def test_add_entries_keeps_comments_and_other_tables(repo):
+    write(repo / "dotkeep.toml", '# my dotfiles\n[links]\n".bashrc" = "bashrc"  # shell\n\n[links.windows]\n".x" = "x"\n')
+    add_entries(repo, [Entry(".vimrc", "vimrc")])
+    text = (repo / "dotkeep.toml").read_text()
+    assert text.startswith("# my dotfiles\n[links]\n\".bashrc\" = \"bashrc\"  # shell\n\".vimrc\" = \"vimrc\"\n\n[links.windows]")
+    assert Entry(".vimrc", "vimrc") in load(repo, "linux").entries
+
+
+def test_add_entries_creates_manifest(repo):
+    add_entries(repo, [Entry(".config/My App/conf", 'config/My App/conf')])
+    assert load(repo).entries == [Entry(".config/My App/conf", "config/My App/conf")]

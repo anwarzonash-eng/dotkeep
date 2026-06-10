@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
-from .manifest import ManifestError, load
+from .manifest import ManifestError, add_entries, load
 
 
 def user_path(text: str) -> Path:
@@ -79,9 +79,9 @@ def cmd_add(args: argparse.Namespace) -> int:
             print(f"dotkeep: {e}", file=sys.stderr)
             failed = True
     if added:
-        print("Moved into the repo and linked. Add these lines to [links] in dotkeep.toml:")
+        add_entries(args.repo, added)
         for entry in added:
-            print(f'  "{entry.target}" = "{entry.source}"')
+            print(f"added      {entry.target}  ->  {entry.source}")
     return 1 if failed else 0
 
 

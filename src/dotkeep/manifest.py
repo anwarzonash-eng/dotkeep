@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -70,3 +71,32 @@ def read_links(table: dict, where: str) -> dict[str, str]:
         if not isinstance(source, str):
             raise ManifestError(f'{where}."{target}" must be a string')
     return dict(table)
+
+
+def add_entries(repo: Path, entries: list[Entry]) -> None:
+    """Append entries to the [links] table.
+
+    The file is edited as text so comments and layout stay as they are.
+    """
+    path = repo / MANIFEST_NAME
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    new = [f"{quote(e.target)} = {quote(e.source)}" for e in entries]
+
+    start = next((i for i, line in enumerate(lines) if line.strip() == "[links]"), None)
+    if start is None:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines += ["[links]", *new]
+    else:
+        end = start + 1
+        while end < len(lines) and not lines[end].lstrip().startswith("["):
+            end += 1
+        while end > start + 1 and not lines[end - 1].strip():
+            end -= 1
+        lines[end:end] = new
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def quote(text: str) -> str:
+    # a JSON string is also a valid TOML basic string
+    return json.dumps(text, ensure_ascii=False)

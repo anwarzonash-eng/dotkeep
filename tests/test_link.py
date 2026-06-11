@@ -63,3 +63,10 @@ def test_dry_run_changes_nothing(repo, home):
     assert (home / ".bashrc").read_text() == "old"
     assert not (home / ".vimrc").exists()
     assert not (home / ".dotkeep-backup").exists()
+
+
+def test_creates_missing_parent_folders(repo, home):
+    write(repo / "config/nvim/init.lua", "x")
+    [r] = link_all(manifest(repo, **{".config/nvim/init.lua": "config/nvim/init.lua"}), home)
+    assert r.action == "linked"
+    assert (home / ".config/nvim/init.lua").read_text() == "x"

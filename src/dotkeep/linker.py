@@ -44,6 +44,7 @@ def link_one(repo: Path, home: Path, entry: Entry, backup: bool = True, dry_run:
             saved.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(target, saved)
     if not dry_run:
+        target.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(source, target, target_is_directory=source.is_dir())
     return Result(entry, action, detail)
 

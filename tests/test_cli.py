@@ -43,3 +43,12 @@ def test_add_updates_manifest_then_status_is_ok(repo, home):
     assert main(["--repo", str(repo), "--home", str(home), "add", str(home / ".vimrc")]) == 0
     assert '".vimrc" = "vimrc"' in (repo / "dotkeep.toml").read_text()
     assert main(["--repo", str(repo), "--home", str(home), "status"]) == 0
+
+
+def test_list(repo, home, capsys):
+    write(repo / "dotkeep.toml", '[links]\n".bashrc" = "bash/bashrc"\n".config/git/config" = "git/config"\n')
+    assert main(["--repo", str(repo), "--home", str(home), "list"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        ".bashrc             ->  bash/bashrc",
+        ".config/git/config  ->  git/config",
+    ]

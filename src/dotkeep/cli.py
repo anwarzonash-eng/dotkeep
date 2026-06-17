@@ -34,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
 
     sub.add_parser("status", help="show the state of every link")
+    sub.add_parser("list", help="list the entries for this platform")
     return parser
 
 
@@ -59,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "unlink":
         for r in unlink_all(manifest, args.home, dry_run=args.dry_run):
             show("would unlink" if args.dry_run and r.action == "unlinked" else r.action, r)
+        return 0
+
+    if args.command == "list":
+        width = max((len(e.target) for e in manifest.entries), default=0)
+        for e in manifest.entries:
+            print(f"{e.target:{width}}  ->  {e.source}")
         return 0
 
     if args.command == "status":

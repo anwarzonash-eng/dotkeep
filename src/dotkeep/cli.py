@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 from . import __version__
 from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
 from .manifest import ManifestError, add_entries, load
+
+
+GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
+LABEL_COLORS = {
+    "ok": GREEN, "linked": GREEN, "added": GREEN,
+    "backed-up": YELLOW, "missing": YELLOW,
+    "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED,
+    "unlinked": CYAN, "skipped": DIM,
+}
+use_color = False
 
 
 def user_path(text: str) -> Path:
@@ -20,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dotkeep", description="Keep dotfiles in one folder and link them into place.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--repo", type=user_path, default=Path.home() / "dotfiles", help="dotfiles folder (default: ~/dotfiles)")
+    parser.add_argument("--no-color", action="store_true", help="plain output (also set by NO_COLOR)")
     parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -39,7 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    global use_color
     args = build_parser().parse_args(argv)
+    use_color = sys.stdout.isatty() and not args.no_color and "NO_COLOR" not in os.environ
     if args.command == "add":
         return cmd_add(args)
     try:
@@ -88,9 +102,17 @@ def cmd_add(args: argparse.Namespace) -> int:
     if added:
         add_entries(args.repo, added)
         for entry in added:
-            print(f"added      {entry.target}  ->  {entry.source}")
+            print(f"{paint('added', 10)} {entry.target}  ->  {entry.source}")
     return 1 if failed else 0
 
 
 def show(label: str, r: Result) -> None:
-    print(f"{label:10} {r.entry.target}" + (f"  ({r.detail})" if r.detail else ""))
+    print(f"{paint(label, 10)} {r.entry.target}" + (f"  ({r.detail})" if r.detail else ""))
+
+
+def paint(label: str, width: int) -> str:
+    text = f"{label:{width}}"
+    color = LABEL_COLORS.get(label.split()[-1] if label.startswith("would") else label)
+    if not use_color or not color:
+        return text
+    return f"{color}{text}{RESET}"

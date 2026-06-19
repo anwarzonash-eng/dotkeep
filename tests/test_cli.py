@@ -52,3 +52,11 @@ def test_list(repo, home, capsys):
         ".bashrc             ->  bash/bashrc",
         ".config/git/config  ->  git/config",
     ]
+
+
+def test_repo_from_environment(monkeypatch, tmp_path):
+    from dotkeep.cli import build_parser
+
+    monkeypatch.setenv("DOTKEEP_REPO", str(tmp_path / "elsewhere"))
+    assert build_parser().parse_args(["status"]).repo == tmp_path / "elsewhere"
+    assert build_parser().parse_args(["--repo", str(tmp_path), "status"]).repo == tmp_path

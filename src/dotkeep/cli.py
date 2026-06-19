@@ -30,7 +30,8 @@ def user_path(text: str) -> Path:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dotkeep", description="Keep dotfiles in one folder and link them into place.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--repo", type=user_path, default=Path.home() / "dotfiles", help="dotfiles folder (default: ~/dotfiles)")
+    default_repo = user_path(os.environ.get("DOTKEEP_REPO", "~/dotfiles"))
+    parser.add_argument("--repo", type=user_path, default=default_repo, help="dotfiles folder (default: $DOTKEEP_REPO or ~/dotfiles)")
     parser.add_argument("--no-color", action="store_true", help="plain output (also set by NO_COLOR)")
     parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)

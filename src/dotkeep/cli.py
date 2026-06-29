@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
-from .manifest import ManifestError, add_entries, load
+from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
 
 
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
@@ -36,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
 
+    sub.add_parser("init", help="create the dotfiles folder and a starter dotkeep.toml")
+
     p_link = sub.add_parser("link", help="link every file in the manifest into place")
     p_link.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
     p_link.add_argument("--no-backup", action="store_true", help="skip files that already exist instead of moving them aside")
@@ -55,6 +57,12 @@ def main(argv: list[str] | None = None) -> int:
     global use_color
     args = build_parser().parse_args(argv)
     use_color = sys.stdout.isatty() and not args.no_color and "NO_COLOR" not in os.environ
+    if args.command == "init":
+        if init(args.repo):
+            print(f"created {args.repo / MANIFEST_NAME}")
+            return 0
+        print(f"dotkeep: {args.repo / MANIFEST_NAME} already exists", file=sys.stderr)
+        return 1
     if args.command == "add":
         return cmd_add(args)
     try:

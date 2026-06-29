@@ -100,3 +100,25 @@ def add_entries(repo: Path, entries: list[Entry]) -> None:
 def quote(text: str) -> str:
     # a JSON string is also a valid TOML basic string
     return json.dumps(text, ensure_ascii=False)
+
+
+TEMPLATE = """\
+# dotkeep manifest: target (relative to home) = source (relative to this folder)
+# Add files with `dotkeep add ~/.bashrc`, then `dotkeep link` on other machines.
+
+[links]
+
+# Entries that only apply on one platform (linux, macos, windows):
+# [links.windows]
+# "AppData/Roaming/Code/User/settings.json" = "vscode/settings.json"
+"""
+
+
+def init(repo: Path) -> bool:
+    """Create the repo folder and a starter manifest. Returns False if one already exists."""
+    path = repo / MANIFEST_NAME
+    if path.exists():
+        return False
+    repo.mkdir(parents=True, exist_ok=True)
+    path.write_text(TEMPLATE, encoding="utf-8")
+    return True

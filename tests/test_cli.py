@@ -60,3 +60,22 @@ def test_repo_from_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("DOTKEEP_REPO", str(tmp_path / "elsewhere"))
     assert build_parser().parse_args(["status"]).repo == tmp_path / "elsewhere"
     assert build_parser().parse_args(["--repo", str(tmp_path), "status"]).repo == tmp_path
+
+
+def test_init(tmp_path, home, capsys):
+    repo = tmp_path / "new" / "dotfiles"
+    assert main(["--repo", str(repo), "--home", str(home), "init"]) == 0
+    assert (repo / "dotkeep.toml").exists()
+    assert main(["--repo", str(repo), "--home", str(home), "list"]) == 0
+    assert main(["--repo", str(repo), "--home", str(home), "init"]) == 1
+    assert "already exists" in capsys.readouterr().err
+
+
+def test_init_template_works_with_add(tmp_path, home):
+    repo = tmp_path / "dotfiles"
+    main(["--repo", str(repo), "--home", str(home), "init"])
+    write(home / ".zshrc", "x")
+    main(["--repo", str(repo), "--home", str(home), "add", str(home / ".zshrc")])
+    from dotkeep.manifest import Entry, load
+
+    assert load(repo).entries == [Entry(".zshrc", "zshrc")]

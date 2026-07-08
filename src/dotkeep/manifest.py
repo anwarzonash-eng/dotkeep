@@ -88,11 +88,13 @@ def add_entries(repo: Path, entries: list[Entry]) -> None:
             lines.append("")
         lines += ["[links]", *new]
     else:
+        # insert after the last key in the table, before any trailing blank or comment lines
         end = start + 1
-        while end < len(lines) and not lines[end].lstrip().startswith("["):
-            end += 1
-        while end > start + 1 and not lines[end - 1].strip():
-            end -= 1
+        i = start + 1
+        while i < len(lines) and not lines[i].lstrip().startswith("["):
+            if lines[i].strip() and not lines[i].lstrip().startswith("#"):
+                end = i + 1
+            i += 1
         lines[end:end] = new
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

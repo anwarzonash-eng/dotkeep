@@ -74,3 +74,15 @@ def test_add_entries_keeps_comments_and_other_tables(repo):
 def test_add_entries_creates_manifest(repo):
     add_entries(repo, [Entry(".config/My App/conf", 'config/My App/conf')])
     assert load(repo).entries == [Entry(".config/My App/conf", "config/My App/conf")]
+
+
+def test_add_entries_goes_above_trailing_comments(repo):
+    write(repo / "dotkeep.toml", '[links]\n".a" = "a"\n\n# [links.windows]\n# ".b" = "b"\n')
+    add_entries(repo, [Entry(".c", "c")])
+    assert (repo / "dotkeep.toml").read_text() == '[links]\n".a" = "a"\n".c" = "c"\n\n# [links.windows]\n# ".b" = "b"\n'
+
+
+def test_add_entries_into_empty_table(repo):
+    write(repo / "dotkeep.toml", "[links]\n\n# comment\n")
+    add_entries(repo, [Entry(".c", "c")])
+    assert (repo / "dotkeep.toml").read_text() == '[links]\n".c" = "c"\n\n# comment\n'

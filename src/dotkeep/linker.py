@@ -10,6 +10,7 @@ from pathlib import Path
 from .manifest import Entry, Manifest
 
 BACKUP_DIR = ".dotkeep-backup"
+WINDOWS_PREFIX = "\\\\?\\"
 
 
 @dataclass
@@ -66,7 +67,7 @@ def status_one(repo: Path, home: Path, entry: Entry) -> Result:
     if target.is_symlink():
         if target.resolve() == source.resolve():
             return Result(entry, "ok")
-        return Result(entry, "wrong-link", f"points to {os.readlink(target)}")
+        return Result(entry, "wrong-link", f"points to {link_text(target)}")
     if target.exists():
         return Result(entry, "conflict", "a file is in the way")
     return Result(entry, "missing")
@@ -84,6 +85,12 @@ def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False) -> list[Re
         else:
             results.append(Result(entry, "skipped", "not linked by dotkeep"))
     return results
+
+
+def link_text(path: Path) -> str:
+    """Where a link points, for messages, without the Windows extended-path prefix."""
+    text = os.readlink(path)
+    return text.removeprefix(WINDOWS_PREFIX)
 
 
 class AddError(Exception):

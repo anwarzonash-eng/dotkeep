@@ -10,6 +10,7 @@ from pathlib import Path
 
 MANIFEST_NAME = "dotkeep.toml"
 PLATFORMS = ("linux", "macos", "windows")
+MODES = ("symlink", "copy")
 
 
 def current_platform() -> str:
@@ -34,6 +35,7 @@ class Entry:
 class Manifest:
     repo: Path
     entries: list[Entry]
+    mode: str = "symlink"
 
 
 def load(repo: Path, platform: str | None = None) -> Manifest:
@@ -47,6 +49,11 @@ def load(repo: Path, platform: str | None = None) -> Manifest:
         raise ManifestError(f"no {MANIFEST_NAME} in {repo}") from None
     except tomllib.TOMLDecodeError as e:
         raise ManifestError(f"{path}: {e}") from None
+
+    settings = data.get("settings", {})
+    mode = settings.get("mode", "symlink") if isinstance(settings, dict) else None
+    if mode not in MODES:
+        raise ManifestError(f"settings.mode must be one of {', '.join(MODES)}")
 
     links = data.get("links", {})
     if not isinstance(links, dict):
@@ -63,7 +70,7 @@ def load(repo: Path, platform: str | None = None) -> Manifest:
         else:
             found.update(read_links({key: value}, "links"))
     found.update(overrides)
-    return Manifest(repo, [Entry(t, s) for t, s in found.items()])
+    return Manifest(repo, [Entry(t, s) for t, s in found.items()], mode)
 
 
 def read_links(table: dict, where: str) -> dict[str, str]:

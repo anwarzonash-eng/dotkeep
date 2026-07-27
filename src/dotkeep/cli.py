@@ -14,8 +14,8 @@ from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
 
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
 LABEL_COLORS = {
-    "ok": GREEN, "linked": GREEN, "added": GREEN,
-    "backed-up": YELLOW, "missing": YELLOW,
+    "ok": GREEN, "linked": GREEN, "copied": GREEN, "added": GREEN,
+    "backed-up": YELLOW, "missing": YELLOW, "modified": YELLOW,
     "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED,
     "unlinked": CYAN, "skipped": DIM,
 }
@@ -32,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     default_repo = user_path(os.environ.get("DOTKEEP_REPO", "~/dotfiles"))
     parser.add_argument("--repo", type=user_path, default=default_repo, help="dotfiles folder (default: $DOTKEEP_REPO or ~/dotfiles)")
+    parser.add_argument("--mode", choices=["symlink", "copy"], help="override settings.mode from the manifest")
     parser.add_argument("--no-color", action="store_true", help="plain output (also set by NO_COLOR)")
     parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -72,11 +73,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.command == "link":
-        results = link_all(manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run)
+        results = link_all(manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run, mode=args.mode)
         for r in results:
             action = r.action
-            if args.dry_run and action in ("linked", "backed-up"):
-                action = "would " + ("link" if action == "linked" else "back up")
+            if args.dry_run and action in ("linked", "copied", "backed-up"):
+                action = "would " + {"linked": "link", "copied": "copy", "backed-up": "back up"}[action]
             show(action, r)
         return 1 if any(r.action == "error" for r in results) else 0
 
@@ -92,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "status":
-        results = status_all(manifest, args.home)
+        results = status_all(manifest, args.home, mode=args.mode)
         for r in results:
             show(r.action, r)
         return 0 if all(r.action == "ok" for r in results) else 1

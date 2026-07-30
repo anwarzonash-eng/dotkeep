@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "unlink":
-        for r in unlink_all(manifest, args.home, dry_run=args.dry_run):
+        for r in unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode):
             show("would unlink" if args.dry_run and r.action == "unlinked" else r.action, r)
         return 0
 

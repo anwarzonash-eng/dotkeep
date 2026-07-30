@@ -1,7 +1,7 @@
 import pytest
 
 from conftest import write
-from dotkeep.linker import link_all, status_all
+from dotkeep.linker import link_all, status_all, unlink_all
 from dotkeep.manifest import Entry, Manifest, ManifestError, load
 
 
@@ -51,3 +51,17 @@ def test_mode_argument_overrides_manifest(repo, home):
     m = Manifest(repo, [Entry(".bashrc", "bashrc")])
     link_all(m, home, mode="copy")
     assert not (home / ".bashrc").is_symlink()
+
+
+def test_unlink_removes_unchanged_copies_only(repo, home):
+    write(repo / "a", "a")
+    write(repo / "nvim/init.lua", "x")
+    write(repo / "b", "b")
+    m = copy_manifest(repo, Entry(".a", "a"), Entry(".config/nvim", "nvim"), Entry(".b", "b"))
+    link_all(m, home)
+    (home / ".b").write_text("edited")
+
+    assert [r.action for r in unlink_all(m, home)] == ["unlinked", "unlinked", "skipped"]
+    assert not (home / ".a").exists()
+    assert not (home / ".config/nvim").exists()
+    assert (home / ".b").read_text() == "edited"

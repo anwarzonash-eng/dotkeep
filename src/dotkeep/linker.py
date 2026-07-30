@@ -112,18 +112,28 @@ def status_one(repo: Path, home: Path, entry: Entry, mode: str = "symlink") -> R
     return Result(entry, "missing")
 
 
-def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False) -> list[Result]:
-    """Remove links that point into the repo. Anything else is left alone."""
+def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False, mode: str | None = None) -> list[Result]:
+    """Remove links (or unchanged copies) that came from the repo. Anything else is left alone."""
+    mode = mode or manifest.mode
     results = []
     for entry in manifest.entries:
-        r = status_one(manifest.repo, home, entry)
+        r = status_one(manifest.repo, home, entry, mode)
         if r.action == "ok":
             if not dry_run:
-                (home / entry.target).unlink()
+                remove(home / entry.target)
             results.append(Result(entry, "unlinked"))
+        elif r.action == "modified":
+            results.append(Result(entry, "skipped", "changed since it was copied"))
         else:
             results.append(Result(entry, "skipped", "not linked by dotkeep"))
     return results
+
+
+def remove(path: Path) -> None:
+    if path.is_symlink() or not path.is_dir():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
 
 
 def link_text(path: Path) -> str:

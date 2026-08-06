@@ -112,15 +112,27 @@ def status_one(repo: Path, home: Path, entry: Entry, mode: str = "symlink") -> R
     return Result(entry, "missing")
 
 
-def unlink_all(manifest: Manifest, home: Path, dry_run: bool = False, mode: str | None = None) -> list[Result]:
-    """Remove links (or unchanged copies) that came from the repo. Anything else is left alone."""
+def unlink_all(
+    manifest: Manifest, home: Path, dry_run: bool = False, mode: str | None = None, restore: bool = False
+) -> list[Result]:
+    """Remove links (or unchanged copies) that came from the repo. Anything else is left alone.
+
+    With restore, a real copy of the file is left in place of each link, so the
+    machine keeps working without the repo.
+    """
     mode = mode or manifest.mode
     results = []
     for entry in manifest.entries:
         r = status_one(manifest.repo, home, entry, mode)
-        if r.action == "ok":
+        target = home / entry.target
+        if r.action == "ok" and restore:
+            if not dry_run and target.is_symlink():
+                target.unlink()
+                place((manifest.repo / entry.source).absolute(), target, "copy")
+            results.append(Result(entry, "restored"))
+        elif r.action == "ok":
             if not dry_run:
-                remove(home / entry.target)
+                remove(target)
             results.append(Result(entry, "unlinked"))
         elif r.action == "modified":
             results.append(Result(entry, "skipped", "changed since it was copied"))

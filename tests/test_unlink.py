@@ -22,3 +22,21 @@ def test_dry_run(repo, home):
     link_all(m, home)
     unlink_all(m, home, dry_run=True)
     assert (home / ".a").is_symlink()
+
+
+def test_restore_leaves_a_real_copy(repo, home):
+    write(repo / "a", "content")
+    m = Manifest(repo, [Entry(".a", "a")])
+    link_all(m, home)
+    assert [r.action for r in unlink_all(m, home, restore=True)] == ["restored"]
+    assert not (home / ".a").is_symlink()
+    assert (home / ".a").read_text() == "content"
+
+
+def test_restore_folder(repo, home):
+    write(repo / "nvim/init.lua", "x")
+    m = Manifest(repo, [Entry(".config/nvim", "nvim")])
+    link_all(m, home)
+    unlink_all(m, home, restore=True)
+    assert not (home / ".config/nvim").is_symlink()
+    assert (home / ".config/nvim/init.lua").read_text() == "x"

@@ -17,7 +17,7 @@ LABEL_COLORS = {
     "ok": GREEN, "linked": GREEN, "copied": GREEN, "added": GREEN,
     "backed-up": YELLOW, "missing": YELLOW, "modified": YELLOW,
     "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED,
-    "unlinked": CYAN, "skipped": DIM,
+    "unlinked": CYAN, "restored": CYAN, "skipped": DIM,
 }
 use_color = False
 
@@ -48,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
+    p_unlink.add_argument("--restore", action="store_true", help="leave a real copy of each file in place of the link")
 
     sub.add_parser("status", help="show the state of every link")
     sub.add_parser("list", help="list the entries for this platform")
@@ -82,8 +83,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "unlink":
-        for r in unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode):
-            show("would unlink" if args.dry_run and r.action == "unlinked" else r.action, r)
+        for r in unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode, restore=args.restore):
+            label = r.action
+            if args.dry_run and label in ("unlinked", "restored"):
+                label = "would " + ("unlink" if label == "unlinked" else "restore")
+            show(label, r)
         return 0
 
     if args.command == "list":

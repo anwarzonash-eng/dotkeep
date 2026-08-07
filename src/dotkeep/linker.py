@@ -52,7 +52,7 @@ def link_one(
     if target.exists():
         if not backup:
             return Result(entry, "skipped", "something is already there")
-        saved = home / BACKUP_DIR / entry.target
+        saved = backup_path(home, entry.target)
         action, detail = "backed-up", f"old file moved to {saved}"
         if not dry_run:
             saved.parent.mkdir(parents=True, exist_ok=True)
@@ -61,6 +61,16 @@ def link_one(
         target.parent.mkdir(parents=True, exist_ok=True)
         place(source, target, mode)
     return Result(entry, action, detail)
+
+
+def backup_path(home: Path, target: str) -> Path:
+    """A free path in the backup folder; never overwrite an earlier backup."""
+    saved = home / BACKUP_DIR / target
+    n = 1
+    while saved.exists() or saved.is_symlink():
+        saved = home / BACKUP_DIR / f"{target}.{n}"
+        n += 1
+    return saved
 
 
 def place(source: Path, target: Path, mode: str) -> None:

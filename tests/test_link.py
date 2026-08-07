@@ -70,3 +70,15 @@ def test_creates_missing_parent_folders(repo, home):
     [r] = link_all(manifest(repo, **{".config/nvim/init.lua": "config/nvim/init.lua"}), home)
     assert r.action == "linked"
     assert (home / ".config/nvim/init.lua").read_text() == "x"
+
+
+def test_second_backup_does_not_overwrite_the_first(repo, home):
+    write(repo / "bashrc", "repo")
+    m = manifest(repo, **{".bashrc": "bashrc"})
+    write(home / ".bashrc", "first")
+    link_all(m, home)
+    (home / ".bashrc").unlink()
+    write(home / ".bashrc", "second")
+    link_all(m, home)
+    assert (home / ".dotkeep-backup" / ".bashrc").read_text() == "first"
+    assert (home / ".dotkeep-backup" / ".bashrc.1").read_text() == "second"

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .doctor import run_checks
 from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
 from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
 
@@ -16,7 +17,7 @@ GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033
 LABEL_COLORS = {
     "ok": GREEN, "linked": GREEN, "copied": GREEN, "added": GREEN,
     "backed-up": YELLOW, "missing": YELLOW, "modified": YELLOW,
-    "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED,
+    "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED, "fail": RED, "warn": YELLOW,
     "unlinked": CYAN, "restored": CYAN, "skipped": DIM,
 }
 use_color = False
@@ -52,6 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("status", help="show the state of every link")
     sub.add_parser("list", help="list the entries for this platform")
+    sub.add_parser("doctor", help="check the setup for common problems")
     return parser
 
 
@@ -67,6 +69,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.command == "add":
         return cmd_add(args)
+    if args.command == "doctor":
+        checks = run_checks(args.repo, args.home)
+        for c in checks:
+            print(f"{paint(c.level, 5)} {c.message}")
+        return 1 if any(c.level == "fail" for c in checks) else 0
     try:
         manifest = load(args.repo)
     except ManifestError as e:

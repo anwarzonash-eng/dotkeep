@@ -22,21 +22,35 @@ WINDOWS_PREFIX = "\\\\?\\"
 @dataclass
 class Result:
     entry: Entry
-    action: str  # "linked", "copied", "backed-up", "ok", "skipped" or "error"
+    action: str  # "linked", "copied", "relinked", "backed-up", "ok", "skipped" or "error"
     detail: str = ""
 
 
 def link_all(
-    manifest: Manifest, home: Path, backup: bool = True, dry_run: bool = False, mode: str | None = None
+    manifest: Manifest,
+    home: Path,
+    backup: bool = True,
+    dry_run: bool = False,
+    mode: str | None = None,
+    force: bool = False,
 ) -> list[Result]:
     mode = mode or manifest.mode
-    return [link_one(manifest.repo, home, entry, backup, dry_run, mode) for entry in manifest.entries]
+    return [link_one(manifest.repo, home, entry, backup, dry_run, mode, force) for entry in manifest.entries]
 
 
 def link_one(
-    repo: Path, home: Path, entry: Entry, backup: bool = True, dry_run: bool = False, mode: str = "symlink"
+    repo: Path,
+    home: Path,
+    entry: Entry,
+    backup: bool = True,
+    dry_run: bool = False,
+    mode: str = "symlink",
+    force: bool = False,
 ) -> Result:
-    """Link (or copy) one entry. With dry_run, report what would happen without changing anything."""
+    """Link (or copy) one entry. With dry_run, report what would happen without changing anything.
+
+    A link that points somewhere else is left alone unless force is set.
+    """
     source = (repo / entry.source).absolute()
     target = home / entry.target
     if not source.exists():
@@ -44,7 +58,13 @@ def link_one(
     if target.is_symlink() and target.resolve() == source.resolve():
         return Result(entry, "ok")
     if target.is_symlink():
-        return Result(entry, "skipped", "already a link to somewhere else")
+        if not force:
+            return Result(entry, "skipped", "already a link to somewhere else (use --force to replace it)")
+        old = link_text(target)
+        if not dry_run:
+            target.unlink()
+            place(source, target, mode)
+        return Result(entry, "relinked", f"was pointing to {old}")
     if mode == "copy" and target.exists() and same_content(source, target):
         return Result(entry, "ok")
 

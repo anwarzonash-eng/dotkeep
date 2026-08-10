@@ -15,7 +15,7 @@ from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
 
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
 LABEL_COLORS = {
-    "ok": GREEN, "linked": GREEN, "copied": GREEN, "added": GREEN,
+    "ok": GREEN, "linked": GREEN, "copied": GREEN, "relinked": GREEN, "added": GREEN,
     "backed-up": YELLOW, "missing": YELLOW, "modified": YELLOW,
     "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED, "fail": RED, "warn": YELLOW,
     "unlinked": CYAN, "restored": CYAN, "skipped": DIM,
@@ -42,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_link = sub.add_parser("link", help="link every file in the manifest into place")
     p_link.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
+    p_link.add_argument("-f", "--force", action="store_true", help="replace links that point somewhere else")
     p_link.add_argument("--no-backup", action="store_true", help="skip files that already exist instead of moving them aside")
 
     p_add = sub.add_parser("add", help="move a file into the repo and link it back")
@@ -81,11 +82,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.command == "link":
-        results = link_all(manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run, mode=args.mode)
+        results = link_all(
+            manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run, mode=args.mode, force=args.force
+        )
+        would = {"linked": "link", "copied": "copy", "relinked": "relink", "backed-up": "back up"}
         for r in results:
             action = r.action
-            if args.dry_run and action in ("linked", "copied", "backed-up"):
-                action = "would " + {"linked": "link", "copied": "copy", "backed-up": "back up"}[action]
+            if args.dry_run and action in would:
+                action = "would " + would[action]
             show(action, r)
         return 1 if any(r.action == "error" for r in results) else 0
 

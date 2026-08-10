@@ -51,7 +51,18 @@ def test_leaves_foreign_symlink_alone(repo, home, tmp_path):
     (home / ".bashrc").symlink_to(other)
     [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home)
     assert r.action == "skipped"
+    assert "--force" in r.detail
     assert (home / ".bashrc").resolve() == other.resolve()
+
+
+def test_force_replaces_foreign_symlink(repo, home, tmp_path):
+    write(repo / "bashrc", "new")
+    other = write(tmp_path / "other", "other")
+    (home / ".bashrc").symlink_to(other)
+    [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home, force=True)
+    assert r.action == "relinked"
+    assert (home / ".bashrc").read_text() == "new"
+    assert other.read_text() == "other"
 
 
 def test_dry_run_changes_nothing(repo, home):

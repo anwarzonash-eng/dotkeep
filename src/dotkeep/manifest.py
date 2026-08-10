@@ -6,7 +6,7 @@ import json
 import sys
 import tomllib
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 MANIFEST_NAME = "dotkeep.toml"
 PLATFORMS = ("linux", "macos", "windows")
@@ -77,7 +77,21 @@ def read_links(table: dict, where: str) -> dict[str, str]:
     for target, source in table.items():
         if not isinstance(source, str):
             raise ManifestError(f'{where}."{target}" must be a string')
+        check_relative(target, f'{where}: target "{target}"', "your home folder")
+        check_relative(source, f'{where}."{target}": source "{source}"', "the repo")
     return dict(table)
+
+
+def check_relative(path: str, what: str, base: str) -> None:
+    """Paths must stay inside their base folder: no absolute paths, no "..", no "~"."""
+    if not path.strip():
+        raise ManifestError(f"{what} is empty")
+    if PurePosixPath(path).is_absolute() or PureWindowsPath(path).is_absolute() or PureWindowsPath(path).drive:
+        raise ManifestError(f"{what} must be relative to {base}")
+    if path.startswith("~"):
+        raise ManifestError(f"{what} must be relative to {base}, without ~")
+    if ".." in PureWindowsPath(path).parts:
+        raise ManifestError(f'{what} must not use ".."')
 
 
 def add_entries(repo: Path, entries: list[Entry]) -> None:

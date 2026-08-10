@@ -86,3 +86,21 @@ def test_add_entries_into_empty_table(repo):
     write(repo / "dotkeep.toml", "[links]\n\n# comment\n")
     add_entries(repo, [Entry(".c", "c")])
     assert (repo / "dotkeep.toml").read_text() == '[links]\n".c" = "c"\n\n# comment\n'
+
+
+@pytest.mark.parametrize(
+    "line, message",
+    [
+        ('"/etc/passwd" = "x"', "must be relative"),
+        ('"C:/Users/me/.x" = "x"', "must be relative"),
+        ('"~/.bashrc" = "bashrc"', "without ~"),
+        ('"../outside" = "x"', '".."'),
+        ('".bashrc" = "../../secret"', '".."'),
+        ('".bashrc" = "a\\\\..\\\\..\\\\b"', '".."'),
+        ('"" = "x"', "is empty"),
+    ],
+)
+def test_paths_must_stay_inside(repo, line, message):
+    write(repo / "dotkeep.toml", f"[links]\n{line}\n")
+    with pytest.raises(ManifestError, match=message):
+        load(repo)

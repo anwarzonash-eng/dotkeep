@@ -22,6 +22,8 @@ dotkeep status                                  # ok / missing / conflict / wron
 dotkeep link --dry-run                          # on a new machine: see what would change
 dotkeep link                                    # ... and create the links
 dotkeep unlink                                  # remove the links again
+dotkeep unlink --restore                        # ... leaving real copies behind
+dotkeep doctor                                  # check symlink support, missing files, backups
 ```
 
 `add` writes the new entries to `dotkeep.toml` for you. The file looks like this:
@@ -41,7 +43,22 @@ dotkeep unlink                                  # remove the links again
 
 Targets are relative to your home folder, sources are relative to the repo.
 
-If a real file is already where a link should go, `link` moves it to `~/.dotkeep-backup/` first. Use `--no-backup` to skip those files instead. `status` exits with `1` when anything is not `ok`, so it can be used in scripts.
+If a real file is already where a link should go, `link` moves it to `~/.dotkeep-backup/` first (a second backup of the same file gets a `.1` suffix, and so on). Use `--no-backup` to skip those files instead. Links that point somewhere else are only replaced with `--force`.
+
+`status` exits with `1` when anything is not `ok`, so it can be used in scripts.
+
+Paths in the manifest must stay inside their folder: no absolute paths, `~` or `..`.
+
+## Copy mode
+
+On Windows, creating symlinks needs Developer Mode (or admin rights). If you cannot turn it on, use copy mode: files are copied instead of linked, and `status` shows `modified` when a copy no longer matches the repo.
+
+```toml
+[settings]
+mode = "copy"
+```
+
+or per command: `dotkeep --mode copy link`. `dotkeep doctor` tells you whether symlinks work on the machine.
 
 The repo is `~/dotfiles` by default. Change it with `--repo PATH` or the `DOTKEEP_REPO` environment variable. Colors are turned off with `--no-color` or `NO_COLOR`.
 

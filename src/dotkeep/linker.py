@@ -194,8 +194,11 @@ def default_source(target: str) -> str:
     return "/".join([parts[0].lstrip(".") or parts[0], *parts[1:]])
 
 
-def add_file(repo: Path, home: Path, path: Path) -> Entry:
-    """Move a file from home into the repo and link it back."""
+def add_file(repo: Path, home: Path, path: Path, source: str | None = None) -> Entry:
+    """Move a file from home into the repo and link it back.
+
+    source is the path inside the repo; by default it is derived from the target.
+    """
     path = path.absolute()
     try:
         target = path.relative_to(home.absolute()).as_posix()
@@ -206,7 +209,7 @@ def add_file(repo: Path, home: Path, path: Path) -> Entry:
     if not path.exists():
         raise AddError(f"{path} does not exist")
 
-    entry = Entry(target, default_source(target))
+    entry = Entry(target, Path(source).as_posix() if source else default_source(target))
     dest = repo / entry.source
     if dest.exists():
         raise AddError(f"{entry.source} already exists in the repo")

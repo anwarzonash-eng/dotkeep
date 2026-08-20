@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_add = sub.add_parser("add", help="move a file into the repo and link it back")
     p_add.add_argument("paths", nargs="+", type=user_path, metavar="PATH")
+    p_add.add_argument("--as", dest="source", metavar="REPO_PATH", help="where to put the file in the repo (one PATH only)")
 
     p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
@@ -116,11 +117,14 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def cmd_add(args: argparse.Namespace) -> int:
+    if args.source and len(args.paths) > 1:
+        print("dotkeep: --as works with one file at a time", file=sys.stderr)
+        return 2
     failed = False
     added = []
     for path in args.paths:
         try:
-            added.append(add_file(args.repo, args.home, path))
+            added.append(add_file(args.repo, args.home, path, args.source))
         except AddError as e:
             print(f"dotkeep: {e}", file=sys.stderr)
             failed = True

@@ -37,3 +37,11 @@ def test_refuses_to_overwrite_repo_file(repo, home):
     with pytest.raises(AddError, match="already exists"):
         add_file(repo, home, write(home / ".vimrc", "home"))
     assert (home / ".vimrc").read_text() == "home"
+
+
+def test_add_as(repo, home):
+    f = write(home / ".config" / "Code" / "User" / "settings.json", "{}")
+    entry = add_file(repo, home, f, "vscode/settings.json")
+    assert entry.source == "vscode/settings.json"
+    assert (repo / "vscode/settings.json").read_text() == "{}"
+    assert f.read_text() == "{}"

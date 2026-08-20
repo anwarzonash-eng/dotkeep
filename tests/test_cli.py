@@ -79,3 +79,11 @@ def test_init_template_works_with_add(tmp_path, home):
     from dotkeep.manifest import Entry, load
 
     assert load(repo).entries == [Entry(".zshrc", "zshrc")]
+
+
+def test_add_as_needs_one_path(repo, home, capsys):
+    write(home / ".a")
+    write(home / ".b")
+    code = main(["--repo", str(repo), "--home", str(home), "add", str(home / ".a"), str(home / ".b"), "--as", "x"])
+    assert code == 2
+    assert "one file" in capsys.readouterr().err

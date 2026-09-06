@@ -95,12 +95,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "unlink":
-        for r in unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode, restore=args.restore):
+        results = unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode, restore=args.restore)
+        for r in results:
             label = r.action
             if args.dry_run and label in ("unlinked", "restored"):
                 label = "would " + ("unlink" if label == "unlinked" else "restore")
             show(label, r)
-        return 0
+        return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "list":
         width = max((len(e.target) for e in manifest.entries), default=0)
@@ -127,6 +128,9 @@ def cmd_add(args: argparse.Namespace) -> int:
             added.append(add_file(args.repo, args.home, path, args.source))
         except AddError as e:
             print(f"dotkeep: {e}", file=sys.stderr)
+            failed = True
+        except OSError as e:
+            print(f"dotkeep: cannot add {path}: {e.strerror or e}", file=sys.stderr)
             failed = True
     if added:
         add_entries(args.repo, added)

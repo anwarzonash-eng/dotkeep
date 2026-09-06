@@ -93,3 +93,17 @@ def test_second_backup_does_not_overwrite_the_first(repo, home):
     link_all(m, home)
     assert (home / ".dotkeep-backup" / ".bashrc").read_text() == "first"
     assert (home / ".dotkeep-backup" / ".bashrc.1").read_text() == "second"
+
+
+def test_os_errors_become_error_results(repo, home, monkeypatch):
+    from dotkeep import linker
+
+    write(repo / "bashrc")
+
+    def denied(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(linker.os, "symlink", denied)
+    [r] = link_all(manifest(repo, **{".bashrc": "bashrc"}), home)
+    assert r.action == "error"
+    assert r.detail == "Permission denied"

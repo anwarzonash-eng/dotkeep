@@ -10,6 +10,7 @@ from __future__ import annotations
 import filecmp
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,7 +36,18 @@ def link_all(
     force: bool = False,
 ) -> list[Result]:
     mode = mode or manifest.mode
-    return [link_one(manifest.repo, home, entry, backup, dry_run, mode, force) for entry in manifest.entries]
+    return [
+        guarded(entry, lambda: link_one(manifest.repo, home, entry, backup, dry_run, mode, force))
+        for entry in manifest.entries
+    ]
+
+
+def guarded(entry: Entry, action: Callable[[], Result]) -> Result:
+    """Turn OS errors (permissions, locked files on Windows) into an error result, not a traceback."""
+    try:
+        return action()
+    except OSError as e:
+        return Result(entry, "error", e.strerror or str(e))
 
 
 def link_one(
@@ -153,22 +165,25 @@ def unlink_all(
     mode = mode or manifest.mode
     results = []
     for entry in manifest.entries:
-        r = status_one(manifest.repo, home, entry, mode)
-        target = home / entry.target
-        if r.action == "ok" and restore:
-            if not dry_run and target.is_symlink():
-                target.unlink()
-                place((manifest.repo / entry.source).absolute(), target, "copy")
-            results.append(Result(entry, "restored"))
-        elif r.action == "ok":
-            if not dry_run:
-                remove(target)
-            results.append(Result(entry, "unlinked"))
-        elif r.action == "modified":
-            results.append(Result(entry, "skipped", "changed since it was copied"))
-        else:
-            results.append(Result(entry, "skipped", "not linked by dotkeep"))
+        results.append(guarded(entry, lambda: unlink_one(manifest.repo, home, entry, dry_run, mode, restore)))
     return results
+
+
+def unlink_one(repo: Path, home: Path, entry: Entry, dry_run: bool, mode: str, restore: bool) -> Result:
+    r = status_one(repo, home, entry, mode)
+    target = home / entry.target
+    if r.action == "ok" and restore:
+        if not dry_run and target.is_symlink():
+            target.unlink()
+            place((repo / entry.source).absolute(), target, "copy")
+        return Result(entry, "restored")
+    if r.action == "ok":
+        if not dry_run:
+            remove(target)
+        return Result(entry, "unlinked")
+    if r.action == "modified":
+        return Result(entry, "skipped", "changed since it was copied")
+    return Result(entry, "skipped", "not linked by dotkeep")
 
 
 def remove(path: Path) -> None:

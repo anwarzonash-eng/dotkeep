@@ -87,3 +87,16 @@ def test_add_as_needs_one_path(repo, home, capsys):
     code = main(["--repo", str(repo), "--home", str(home), "add", str(home / ".a"), str(home / ".b"), "--as", "x"])
     assert code == 2
     assert "one file" in capsys.readouterr().err
+
+
+def test_quiet_hides_ok_lines(repo, home, capsys):
+    write(repo / "a")
+    write(repo / "b")
+    write(repo / "dotkeep.toml", '[links]\n".a" = "a"\n".b" = "b"\n')
+    main(["--repo", str(repo), "--home", str(home), "link"])
+    (home / ".b").unlink()
+    capsys.readouterr()
+    main(["--repo", str(repo), "--home", str(home), "-q", "status"])
+    out = capsys.readouterr().out
+    assert ".a" not in out
+    assert "missing" in out and ".b" in out

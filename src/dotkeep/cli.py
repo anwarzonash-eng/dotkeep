@@ -21,6 +21,7 @@ LABEL_COLORS = {
     "unlinked": CYAN, "restored": CYAN, "skipped": DIM,
 }
 use_color = False
+quiet = False
 
 
 def user_path(text: str) -> Path:
@@ -34,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     default_repo = user_path(os.environ.get("DOTKEEP_REPO", "~/dotfiles"))
     parser.add_argument("--repo", type=user_path, default=default_repo, help="dotfiles folder (default: $DOTKEEP_REPO or ~/dotfiles)")
     parser.add_argument("--mode", choices=["symlink", "copy"], help="override settings.mode from the manifest")
+    parser.add_argument("-q", "--quiet", action="store_true", help="only show changes and problems")
     parser.add_argument("--no-color", action="store_true", help="plain output (also set by NO_COLOR)")
     parser.add_argument("--home", type=user_path, default=Path.home(), help=argparse.SUPPRESS)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -60,9 +62,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    global use_color
+    global use_color, quiet
     args = build_parser().parse_args(argv)
     use_color = sys.stdout.isatty() and not args.no_color and "NO_COLOR" not in os.environ
+    quiet = args.quiet
     if args.command == "init":
         if init(args.repo):
             print(f"created {args.repo / MANIFEST_NAME}")
@@ -140,6 +143,8 @@ def cmd_add(args: argparse.Namespace) -> int:
 
 
 def show(label: str, r: Result) -> None:
+    if quiet and label in ("ok", "skipped"):
+        return
     print(f"{paint(label, 10)} {r.entry.target}" + (f"  ({r.detail})" if r.detail else ""))
 
 

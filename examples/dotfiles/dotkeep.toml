@@ -1,0 +1,10 @@
+# Example dotfiles repo. Try it without touching your real home folder:
+#   dotkeep --repo examples/dotfiles --home /tmp/fake-home link --dry-run
+
+[links]
+".bashrc" = "bash/bashrc"
+".gitconfig" = "git/gitconfig"
+".config/nvim" = "nvim"
+
+[links.windows]
+"AppData/Local/nvim" = "nvim"

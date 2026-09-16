@@ -95,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.dry_run and action in would:
                 action = "would " + would[action]
             show(action, r)
+        summary(results)
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "unlink":
@@ -116,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         results = status_all(manifest, args.home, mode=args.mode)
         for r in results:
             show(r.action, r)
+        summary(results)
         return 0 if all(r.action == "ok" for r in results) else 1
     return 0
 
@@ -146,6 +148,15 @@ def show(label: str, r: Result) -> None:
     if quiet and label in ("ok", "skipped"):
         return
     print(f"{paint(label, 10)} {r.entry.target}" + (f"  ({r.detail})" if r.detail else ""))
+
+
+def summary(results: list[Result]) -> None:
+    """One line such as "3 ok, 1 missing" (nothing for an empty manifest)."""
+    counts: dict[str, int] = {}
+    for r in results:
+        counts[r.action] = counts.get(r.action, 0) + 1
+    if counts:
+        print("\n" + ", ".join(f"{n} {action}" for action, n in counts.items()))
 
 
 def paint(label: str, width: int) -> str:

@@ -45,6 +45,14 @@ def test_add_updates_manifest_then_status_is_ok(repo, home):
     assert main(["--repo", str(repo), "--home", str(home), "status"]) == 0
 
 
+def test_status_summary(repo, home, capsys):
+    write(repo / "a")
+    write(repo / "b")
+    write(repo / "dotkeep.toml", '[links]\n".a" = "a"\n".b" = "b"\n".c" = "c"\n')
+    main(["--repo", str(repo), "--home", str(home), "status"])
+    assert capsys.readouterr().out.splitlines()[-1] == "2 missing, 1 no-source"
+
+
 def test_list(repo, home, capsys):
     write(repo / "dotkeep.toml", '[links]\n".bashrc" = "bash/bashrc"\n".config/git/config" = "git/config"\n')
     assert main(["--repo", str(repo), "--home", str(home), "list"]) == 0

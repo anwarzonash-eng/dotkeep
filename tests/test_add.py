@@ -45,3 +45,13 @@ def test_add_as(repo, home):
     assert entry.source == "vscode/settings.json"
     assert (repo / "vscode/settings.json").read_text() == "{}"
     assert f.read_text() == "{}"
+
+
+def test_refuses_files_inside_the_repo(home):
+    repo = home / "dotfiles"
+    write(repo / "notes.txt")
+    with pytest.raises(AddError, match="inside the repo"):
+        add_file(repo, home, repo / "notes.txt")
+    with pytest.raises(AddError, match="inside the repo"):
+        add_file(repo, home, repo)
+    assert (repo / "notes.txt").exists()

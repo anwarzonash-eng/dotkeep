@@ -219,6 +219,9 @@ def add_file(repo: Path, home: Path, path: Path, source: str | None = None) -> E
         target = path.relative_to(home.absolute()).as_posix()
     except ValueError:
         raise AddError(f"{path} is not inside {home}") from None
+    if path.is_relative_to(repo.absolute()) or repo.absolute().is_relative_to(path):
+        # the repo usually lives in home too, so this would move the repo into itself
+        raise AddError(f"{path} is inside the repo (or contains it)")
     if path.is_symlink():
         raise AddError(f"{path} is already a link")
     if not path.exists():

@@ -73,13 +73,15 @@ def load(repo: Path, platform: str | None = None) -> Manifest:
     return Manifest(repo, [Entry(t, s) for t, s in found.items()], mode)
 
 
-def read_links(table: dict, where: str) -> dict[str, str]:
+def read_links(table: dict[str, object], where: str) -> dict[str, str]:
+    links: dict[str, str] = {}
     for target, source in table.items():
         if not isinstance(source, str):
             raise ManifestError(f'{where}."{target}" must be a string')
         check_relative(target, f'{where}: target "{target}"', "your home folder")
         check_relative(source, f'{where}."{target}": source "{source}"', "the repo")
-    return dict(table)
+        links[target] = source
+    return links
 
 
 def check_relative(path: str, what: str, base: str) -> None:

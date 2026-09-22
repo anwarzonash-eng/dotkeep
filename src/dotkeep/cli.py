@@ -108,9 +108,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "list":
-        width = max((len(e.target) for e in manifest.entries), default=0)
-        for e in manifest.entries:
-            print(f"{e.target:{width}}  ->  {e.source}")
+        width = max((len(entry.target) for entry in manifest.entries), default=0)
+        for entry in manifest.entries:
+            print(f"{entry.target:{width}}  ->  {entry.source}")
         return 0
 
     if args.command == "status":

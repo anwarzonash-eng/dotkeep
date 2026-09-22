@@ -64,10 +64,11 @@ def test_unknown_platform_section(repo):
 
 
 def test_add_entries_keeps_comments_and_other_tables(repo):
-    write(repo / "dotkeep.toml", '# my dotfiles\n[links]\n".bashrc" = "bashrc"  # shell\n\n[links.windows]\n".x" = "x"\n')
+    before = '# my dotfiles\n[links]\n".bashrc" = "bashrc"  # shell\n\n[links.windows]\n".x" = "x"\n'
+    write(repo / "dotkeep.toml", before)
     add_entries(repo, [Entry(".vimrc", "vimrc")])
     text = (repo / "dotkeep.toml").read_text()
-    assert text.startswith("# my dotfiles\n[links]\n\".bashrc\" = \"bashrc\"  # shell\n\".vimrc\" = \"vimrc\"\n\n[links.windows]")
+    assert text == before.replace('# shell\n', '# shell\n".vimrc" = "vimrc"\n')
     assert Entry(".vimrc", "vimrc") in load(repo, "linux").entries
 
 

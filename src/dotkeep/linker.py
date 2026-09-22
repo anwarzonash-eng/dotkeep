@@ -13,6 +13,7 @@ import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .manifest import Entry, Manifest
 
@@ -37,15 +38,15 @@ def link_all(
 ) -> list[Result]:
     mode = mode or manifest.mode
     return [
-        guarded(entry, lambda: link_one(manifest.repo, home, entry, backup, dry_run, mode, force))
+        guarded(entry, link_one, manifest.repo, home, entry, backup, dry_run, mode, force)
         for entry in manifest.entries
     ]
 
 
-def guarded(entry: Entry, action: Callable[[], Result]) -> Result:
-    """Turn OS errors (permissions, locked files on Windows) into an error result, not a traceback."""
+def guarded(entry: Entry, action: Callable[..., Result], *args: Any) -> Result:
+    """Run action(*args), turning OS errors (permissions, locked files on Windows) into an error result."""
     try:
-        return action()
+        return action(*args)
     except OSError as e:
         return Result(entry, "error", e.strerror or str(e))
 
@@ -163,10 +164,10 @@ def unlink_all(
     machine keeps working without the repo.
     """
     mode = mode or manifest.mode
-    results = []
-    for entry in manifest.entries:
-        results.append(guarded(entry, lambda: unlink_one(manifest.repo, home, entry, dry_run, mode, restore)))
-    return results
+    return [
+        guarded(entry, unlink_one, manifest.repo, home, entry, dry_run, mode, restore)
+        for entry in manifest.entries
+    ]
 
 
 def unlink_one(repo: Path, home: Path, entry: Entry, dry_run: bool, mode: str, restore: bool) -> Result:

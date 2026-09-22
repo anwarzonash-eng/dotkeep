@@ -21,3 +21,4 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -v
       - run: mypy
+      - run: ruff check

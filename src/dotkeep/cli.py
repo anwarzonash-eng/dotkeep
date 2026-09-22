@@ -12,7 +12,6 @@ from .doctor import run_checks
 from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
 from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
 
-
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
 LABEL_COLORS = {
     "ok": GREEN, "linked": GREEN, "copied": GREEN, "relinked": GREEN, "added": GREEN,
@@ -30,10 +29,14 @@ def user_path(text: str) -> Path:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="dotkeep", description="Keep dotfiles in one folder and link them into place.")
+    parser = argparse.ArgumentParser(
+        prog="dotkeep", description="Keep dotfiles in one folder and link them into place."
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     default_repo = user_path(os.environ.get("DOTKEEP_REPO", "~/dotfiles"))
-    parser.add_argument("--repo", type=user_path, default=default_repo, help="dotfiles folder (default: $DOTKEEP_REPO or ~/dotfiles)")
+    parser.add_argument(
+        "--repo", type=user_path, default=default_repo, help="dotfiles folder (default: $DOTKEEP_REPO or ~/dotfiles)"
+    )
     parser.add_argument("--mode", choices=["symlink", "copy"], help="override settings.mode from the manifest")
     parser.add_argument("-q", "--quiet", action="store_true", help="only show changes and problems")
     parser.add_argument("--no-color", action="store_true", help="plain output (also set by NO_COLOR)")
@@ -45,11 +48,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_link = sub.add_parser("link", help="link every file in the manifest into place")
     p_link.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
     p_link.add_argument("-f", "--force", action="store_true", help="replace links that point somewhere else")
-    p_link.add_argument("--no-backup", action="store_true", help="skip files that already exist instead of moving them aside")
+    p_link.add_argument(
+        "--no-backup", action="store_true", help="skip files that already exist instead of moving them aside"
+    )
 
     p_add = sub.add_parser("add", help="move a file into the repo and link it back")
     p_add.add_argument("paths", nargs="+", type=user_path, metavar="PATH")
-    p_add.add_argument("--as", dest="source", metavar="REPO_PATH", help="where to put the file in the repo (one PATH only)")
+    p_add.add_argument(
+        "--as", dest="source", metavar="REPO_PATH", help="where to put the file in the repo (one PATH only)"
+    )
 
     p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")

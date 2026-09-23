@@ -9,15 +9,15 @@ from pathlib import Path
 
 from . import __version__
 from .doctor import run_checks
-from .linker import AddError, Result, add_file, link_all, status_all, unlink_all
-from .manifest import MANIFEST_NAME, ManifestError, add_entries, init, load
+from .linker import AddError, Result, add_file, link_all, remove, remove_entry, status_all, unlink_all
+from .manifest import MANIFEST_NAME, ManifestError, add_entries, all_sources, init, load, remove_targets
 
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
 LABEL_COLORS = {
     "ok": GREEN, "linked": GREEN, "copied": GREEN, "relinked": GREEN, "added": GREEN,
     "backed-up": YELLOW, "missing": YELLOW, "modified": YELLOW,
     "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED, "fail": RED, "warn": YELLOW,
-    "unlinked": CYAN, "restored": CYAN, "skipped": DIM,
+    "unlinked": CYAN, "restored": CYAN, "removed": CYAN, "skipped": DIM,
 }
 use_color = False
 quiet = False
@@ -61,6 +61,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_unlink = sub.add_parser("unlink", help="remove the links (the files in the repo stay)")
     p_unlink.add_argument("-n", "--dry-run", action="store_true", help="show what would change, change nothing")
     p_unlink.add_argument("--restore", action="store_true", help="leave a real copy of each file in place of the link")
+
+    p_remove = sub.add_parser("remove", help="stop tracking files: put real copies back and drop them from the repo")
+    p_remove.add_argument("targets", nargs="+", metavar="PATH", help="a path in your home folder, such as ~/.vimrc")
 
     sub.add_parser("status", help="show the state of every link")
     sub.add_parser("list", help="list the entries for this platform")
@@ -112,6 +115,24 @@ def main(argv: list[str] | None = None) -> int:
             if args.dry_run and label in ("unlinked", "restored"):
                 label = "would " + ("unlink" if label == "unlinked" else "restore")
             show(label, r)
+        return 1 if any(r.action == "error" for r in results) else 0
+
+    if args.command == "remove":
+        results = []
+        for text in args.targets:
+            path = user_path(text)
+            target = path.absolute().relative_to(args.home.absolute()).as_posix() if path.is_absolute() else text
+            results.append(remove_entry(manifest, args.home, target))
+        done = {r.entry.target for r in results if r.action == "removed"}
+        if done:
+            remove_targets(args.repo, done)
+            still_used = all_sources(args.repo)
+            for r in results:
+                source = args.repo / r.entry.source
+                if r.action == "removed" and r.entry.source not in still_used and source.exists():
+                    remove(source)
+        for r in results:
+            show(r.action, r)
         return 1 if any(r.action == "error" for r in results) else 0
 
     if args.command == "list":

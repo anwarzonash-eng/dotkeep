@@ -236,3 +236,22 @@ def add_file(repo: Path, home: Path, path: Path, source: str | None = None) -> E
     shutil.move(path, dest)
     os.symlink(dest.absolute(), path, target_is_directory=dest.is_dir())
     return entry
+
+
+def remove_entry(manifest: Manifest, home: Path, target: str) -> Result:
+    """Stop tracking a file: put a real copy back in home and take it out of the repo.
+
+    The caller removes the manifest line; the repo copy is deleted only once no
+    other entry uses it.
+    """
+    entry = next((e for e in manifest.entries if e.target == target), None)
+    if entry is None:
+        return Result(Entry(target, ""), "error", "not in the manifest for this platform")
+    source = (manifest.repo / entry.source).absolute()
+    path = home / entry.target
+    if source.exists() and path.is_symlink() and path.resolve() == source.resolve():
+        path.unlink()
+        place(source, path, "copy")
+    elif not path.exists() and source.exists():
+        place(source, path, "copy")
+    return Result(entry, "removed", "the file stays in your home folder")

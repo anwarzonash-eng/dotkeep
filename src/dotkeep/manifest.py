@@ -147,3 +147,34 @@ def init(repo: Path) -> bool:
     repo.mkdir(parents=True, exist_ok=True)
     path.write_text(TEMPLATE, encoding="utf-8")
     return True
+
+
+def remove_targets(repo: Path, targets: set[str]) -> int:
+    """Delete the lines for these targets from every table. Returns how many lines went."""
+    path = repo / MANIFEST_NAME
+    kept, removed = [], 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith(("#", "[")) and "=" in stripped:
+            try:
+                key = next(iter(tomllib.loads(line)), None)
+            except tomllib.TOMLDecodeError:
+                key = None
+            if key in targets:
+                removed += 1
+                continue
+        kept.append(line)
+    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    return removed
+
+
+def all_sources(repo: Path) -> set[str]:
+    """Every source named in the manifest, on any platform."""
+    data = tomllib.loads((repo / MANIFEST_NAME).read_text(encoding="utf-8"))
+    sources: set[str] = set()
+    for value in data.get("links", {}).values():
+        if isinstance(value, str):
+            sources.add(value)
+        elif isinstance(value, dict):
+            sources.update(v for v in value.values() if isinstance(v, str))
+    return sources

@@ -5,12 +5,13 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from . import __version__
 from .doctor import run_checks
 from .linker import AddError, Result, add_file, link_all, remove, remove_entry, status_all, unlink_all
-from .manifest import MANIFEST_NAME, ManifestError, add_entries, all_sources, init, load, remove_targets
+from .manifest import MANIFEST_NAME, Manifest, ManifestError, add_entries, all_sources, init, load, remove_targets
 
 GREEN, YELLOW, RED, CYAN, DIM, RESET = "\033[32m", "\033[33m", "\033[31m", "\033[36m", "\033[2m", "\033[0m"
 LABEL_COLORS = {
@@ -76,78 +77,26 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     use_color = sys.stdout.isatty() and not args.no_color and "NO_COLOR" not in os.environ
     quiet = args.quiet
-    if args.command == "init":
-        if init(args.repo):
-            print(f"created {args.repo / MANIFEST_NAME}")
-            return 0
-        print(f"dotkeep: {args.repo / MANIFEST_NAME} already exists", file=sys.stderr)
-        return 1
-    if args.command == "add":
-        return cmd_add(args)
-    if args.command == "doctor":
-        checks = run_checks(args.repo, args.home)
-        for c in checks:
-            print(f"{paint(c.level, 5)} {c.message}")
-        return 1 if any(c.level == "fail" for c in checks) else 0
+
+    if args.command in STANDALONE:
+        return STANDALONE[args.command](args)
     try:
         manifest = load(args.repo)
     except ManifestError as e:
         print(f"dotkeep: {e}", file=sys.stderr)
         return 1
+    return WITH_MANIFEST[args.command](args, manifest)
 
-    if args.command == "link":
-        results = link_all(
-            manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run, mode=args.mode, force=args.force
-        )
-        would = {"linked": "link", "copied": "copy", "relinked": "relink", "backed-up": "back up"}
-        for r in results:
-            action = r.action
-            if args.dry_run and action in would:
-                action = "would " + would[action]
-            show(action, r)
-        summary(results)
-        return 1 if any(r.action == "error" for r in results) else 0
 
-    if args.command == "unlink":
-        results = unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode, restore=args.restore)
-        for r in results:
-            label = r.action
-            if args.dry_run and label in ("unlinked", "restored"):
-                label = "would " + ("unlink" if label == "unlinked" else "restore")
-            show(label, r)
-        return 1 if any(r.action == "error" for r in results) else 0
+# commands that work without a valid manifest
 
-    if args.command == "remove":
-        results = []
-        for text in args.targets:
-            path = user_path(text)
-            target = path.absolute().relative_to(args.home.absolute()).as_posix() if path.is_absolute() else text
-            results.append(remove_entry(manifest, args.home, target))
-        done = {r.entry.target for r in results if r.action == "removed"}
-        if done:
-            remove_targets(args.repo, done)
-            still_used = all_sources(args.repo)
-            for r in results:
-                source = args.repo / r.entry.source
-                if r.action == "removed" and r.entry.source not in still_used and source.exists():
-                    remove(source)
-        for r in results:
-            show(r.action, r)
-        return 1 if any(r.action == "error" for r in results) else 0
 
-    if args.command == "list":
-        width = max((len(entry.target) for entry in manifest.entries), default=0)
-        for entry in manifest.entries:
-            print(f"{entry.target:{width}}  ->  {entry.source}")
+def cmd_init(args: argparse.Namespace) -> int:
+    if init(args.repo):
+        print(f"created {args.repo / MANIFEST_NAME}")
         return 0
-
-    if args.command == "status":
-        results = status_all(manifest, args.home, mode=args.mode)
-        for r in results:
-            show(r.action, r)
-        summary(results)
-        return 0 if all(r.action == "ok" for r in results) else 1
-    return 0
+    print(f"dotkeep: {args.repo / MANIFEST_NAME} already exists", file=sys.stderr)
+    return 1
 
 
 def cmd_add(args: argparse.Namespace) -> int:
@@ -170,6 +119,87 @@ def cmd_add(args: argparse.Namespace) -> int:
         for entry in added:
             print(f"{paint('added', 10)} {entry.target}  ->  {entry.source}")
     return 1 if failed else 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    checks = run_checks(args.repo, args.home)
+    for c in checks:
+        print(f"{paint(c.level, 5)} {c.message}")
+    return 1 if any(c.level == "fail" for c in checks) else 0
+
+
+# commands that need the manifest
+
+
+def cmd_link(args: argparse.Namespace, manifest: Manifest) -> int:
+    results = link_all(
+        manifest, args.home, backup=not args.no_backup, dry_run=args.dry_run, mode=args.mode, force=args.force
+    )
+    would = {"linked": "link", "copied": "copy", "relinked": "relink", "backed-up": "back up"}
+    for r in results:
+        show("would " + would[r.action] if args.dry_run and r.action in would else r.action, r)
+    summary(results)
+    return 1 if any(r.action == "error" for r in results) else 0
+
+
+def cmd_unlink(args: argparse.Namespace, manifest: Manifest) -> int:
+    results = unlink_all(manifest, args.home, dry_run=args.dry_run, mode=args.mode, restore=args.restore)
+    would = {"unlinked": "unlink", "restored": "restore"}
+    for r in results:
+        show("would " + would[r.action] if args.dry_run and r.action in would else r.action, r)
+    return 1 if any(r.action == "error" for r in results) else 0
+
+
+def cmd_remove(args: argparse.Namespace, manifest: Manifest) -> int:
+    results = []
+    for text in args.targets:
+        path = user_path(text)
+        target = path.absolute().relative_to(args.home.absolute()).as_posix() if path.is_absolute() else text
+        results.append(remove_entry(manifest, args.home, target))
+
+    done = {r.entry.target for r in results if r.action == "removed"}
+    if done:
+        remove_targets(args.repo, done)
+        still_used = all_sources(args.repo)
+        for r in results:
+            source = args.repo / r.entry.source
+            if r.action == "removed" and r.entry.source not in still_used and source.exists():
+                remove(source)
+    for r in results:
+        show(r.action, r)
+    return 1 if any(r.action == "error" for r in results) else 0
+
+
+def cmd_list(args: argparse.Namespace, manifest: Manifest) -> int:
+    width = max((len(entry.target) for entry in manifest.entries), default=0)
+    for entry in manifest.entries:
+        print(f"{entry.target:{width}}  ->  {entry.source}")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace, manifest: Manifest) -> int:
+    results = status_all(manifest, args.home, mode=args.mode)
+    for r in results:
+        show(r.action, r)
+    summary(results)
+    return 0 if all(r.action == "ok" for r in results) else 1
+
+
+STANDALONE: dict[str, Callable[[argparse.Namespace], int]] = {
+    "init": cmd_init,
+    "add": cmd_add,
+    "doctor": cmd_doctor,
+}
+WITH_MANIFEST: dict[str, Callable[[argparse.Namespace, Manifest], int]] = {
+    "link": cmd_link,
+    "unlink": cmd_unlink,
+    "remove": cmd_remove,
+    "list": cmd_list,
+    "status": cmd_status,
+}
+
+
+# output
 
 
 def show(label: str, r: Result) -> None:

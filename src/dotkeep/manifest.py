@@ -141,6 +141,8 @@ TEMPLATE = """\
 
 def init(repo: Path) -> bool:
     """Create the repo folder and a starter manifest. Returns False if one already exists."""
+    if repo.exists() and not repo.is_dir():
+        raise ManifestError(f"{repo} exists but is not a folder")
     path = repo / MANIFEST_NAME
     if path.exists():
         return False

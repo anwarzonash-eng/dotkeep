@@ -117,3 +117,9 @@ def test_dry_run_labels_are_colored(monkeypatch):
     assert cli.paint("would link", 10) == f"{cli.GREEN}would link{cli.RESET}"
     assert cli.paint("would back up", 10).startswith(cli.YELLOW)
     assert cli.paint("missing", 10).startswith(cli.YELLOW)
+
+
+def test_init_when_repo_path_is_a_file(tmp_path, home, capsys):
+    path = write(tmp_path / "dotfiles", "oops")
+    assert main(["--repo", str(path), "--home", str(home), "init"]) == 1
+    assert "not a folder" in capsys.readouterr().err

@@ -95,7 +95,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    if init(args.repo):
+    try:
+        created = init(args.repo)
+    except ManifestError as e:
+        print(f"dotkeep: {e}", file=sys.stderr)
+        return 1
+    if created:
         print(f"created {args.repo / MANIFEST_NAME}")
         return 0
     print(f"dotkeep: {args.repo / MANIFEST_NAME} already exists", file=sys.stderr)

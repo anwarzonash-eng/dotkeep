@@ -108,3 +108,12 @@ def test_quiet_hides_ok_lines(repo, home, capsys):
     out = capsys.readouterr().out
     assert ".a" not in out
     assert "missing" in out and ".b" in out
+
+
+def test_dry_run_labels_are_colored(monkeypatch):
+    from dotkeep import cli
+
+    monkeypatch.setattr(cli, "use_color", True)
+    assert cli.paint("would link", 10) == f"{cli.GREEN}would link{cli.RESET}"
+    assert cli.paint("would back up", 10).startswith(cli.YELLOW)
+    assert cli.paint("missing", 10).startswith(cli.YELLOW)

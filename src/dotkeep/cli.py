@@ -20,6 +20,9 @@ LABEL_COLORS = {
     "conflict": RED, "wrong-link": RED, "no-source": RED, "error": RED, "fail": RED, "warn": YELLOW,
     "unlinked": CYAN, "restored": CYAN, "removed": CYAN, "skipped": DIM,
 }
+# "would link" is colored like "linked"
+WOULD = {"link": "linked", "copy": "copied", "relink": "relinked", "back up": "backed-up",
+         "unlink": "unlinked", "restore": "restored"}
 use_color = False
 quiet = False
 
@@ -219,7 +222,8 @@ def summary(results: list[Result]) -> None:
 
 def paint(label: str, width: int) -> str:
     text = f"{label:{width}}"
-    color = LABEL_COLORS.get(label.split()[-1] if label.startswith("would") else label)
+    key = WOULD.get(label.removeprefix("would "), label) if label.startswith("would ") else label
+    color = LABEL_COLORS.get(key)
     if not use_color or not color:
         return text
     return f"{color}{text}{RESET}"

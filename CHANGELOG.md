@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- `remove` command: stop tracking a file, put a real copy back and drop it from the repo and manifest
+- Summary line after `link` and `status` ("3 ok, 1 missing")
+- `add` refuses files that are inside the repo itself
+- Example dotfiles repo in `examples/dotfiles`
+- Fixed: `--dry-run` labels were not colored, `init` crashed when the repo path was a file
+- `mypy --strict` and `ruff` in CI
+
 ## 0.2.0
 
 - Copy mode (`[settings] mode = "copy"` or `--mode copy`) for machines without symlink support; `status` reports `modified` copies

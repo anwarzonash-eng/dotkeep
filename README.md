@@ -101,6 +101,10 @@ examples/       a small example dotfiles repo
 
 CI runs the tests on Linux, macOS and Windows with Python 3.11, 3.12 and 3.13.
 
+## Roadmap
+
+Per-host entries, templates, private files and `sync` are next. See [ROADMAP.md](ROADMAP.md) and [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 [MIT](LICENSE)
